@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>IP 子網計算器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#EEF2F7;
+  --surface:#FFFFFF;
+  --surface-2:#F5F7FB;
+  --text:#14213A;
+  --muted:#5B6B85;
+  --line:#D6DEE9;
+  --line-strong:#B7C3D6;
+  --net:#2F6FEB;
+  --net-soft:#DCE7FD;
+  --net-text:#1C4FB8;
+  --host:#E99A2B;
+  --host-soft:#FDEBD0;
+  --host-text:#9B5E0A;
+  --ok:#1E9A6B;
+  --err:#D2434B;
+  --err-soft:#FBE3E4;
+  --focus:#2F6FEB;
+  --radius:10px;
+  --sans:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0E1626;
+    --surface:#162034;
+    --surface-2:#1C2840;
+    --text:#E6ECF5;
+    --muted:#93A3BC;
+    --line:#26344C;
+    --line-strong:#3A4B68;
+    --net:#5B8DEF;
+    --net-soft:#1E3461;
+    --net-text:#9DBCFF;
+    --host:#F2A93B;
+    --host-soft:#4A3415;
+    --host-text:#FFD089;
+    --ok:#3BC28A;
+    --err:#F06A72;
+    --err-soft:#4A2226;
+    --focus:#7EA6FF;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0E1626;
+  --surface:#162034;
+  --surface-2:#1C2840;
+  --text:#E6ECF5;
+  --muted:#93A3BC;
+  --line:#26344C;
+  --line-strong:#3A4B68;
+  --net:#5B8DEF;
+  --net-soft:#1E3461;
+  --net-text:#9DBCFF;
+  --host:#F2A93B;
+  --host-soft:#4A3415;
+  --host-text:#FFD089;
+  --ok:#3BC28A;
+  --err:#F06A72;
+  --err-soft:#4A2226;
+  --focus:#7EA6FF;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0;background:var(--bg);color:var(--text)}
+body{font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+.wrap{max-width:1040px;margin:0 auto;padding:28px 20px 60px}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+h1{font-size:22px;font-weight:600;margin:0;letter-spacing:-.01em}
+h1 small{font-weight:400;color:var(--muted);font-size:14px;margin-left:10px}
+.legend{display:flex;gap:14px;font-size:13px;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.legend .ln::before{background:var(--net)}
+.legend .lh::before{background:var(--host)}
+
+nav.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:22px;overflow-x:auto}
+nav.tabs button{background:none;border:0;padding:10px 14px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;border-radius:6px 6px 0 0}
+nav.tabs button:hover{color:var(--text);background:var(--surface-2)}
+nav.tabs button[aria-selected="true"]{color:var(--text);border-bottom-color:var(--net);font-weight:500}
+section.panel{display:none}
+section.panel.active{display:block}
+
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field label{font-size:13px;color:var(--muted)}
+.field input,.field select,.field textarea{background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;padding:9px 12px;min-height:40px}
+.field input{font-family:var(--mono);font-size:15px}
+.field input::placeholder{color:var(--muted);opacity:.8}
+.field input.bad{border-color:var(--err);background:var(--err-soft)}
+.field textarea{font-family:var(--mono);font-size:14px;resize:vertical;min-height:110px}
+.grow{flex:1 1 240px}
+.msg{color:var(--err);font-size:13px;min-height:20px;margin-top:8px}
+.msg.ok{color:var(--muted)}
+
+.btn{background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;padding:9px 14px;cursor:pointer;min-height:40px}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--net);border-color:var(--net);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.small{padding:4px 10px;min-height:0;font-size:13px}
+
+/* bit strip */
+.bits{margin:26px 0 8px}
+.bits-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.bits-head .cidr{font-family:var(--mono);font-size:22px;font-weight:600}
+.bits-head .cidr b{color:var(--net-text);font-weight:600}
+.bits-head input[type=range]{width:min(360px,100%);accent-color:var(--net)}
+.octets{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.octet{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;position:relative}
+.octet .dec{grid-column:1/-1;text-align:center;font-family:var(--mono);font-size:14px;color:var(--muted);padding-bottom:4px}
+.bit{aspect-ratio:1/1.15;border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:13px;cursor:pointer;border:1px solid transparent;user-select:none;transition:transform .08s}
+.bit:hover{transform:translateY(-1px);border-color:var(--line-strong)}
+.bit.net{background:var(--net-soft);color:var(--net-text)}
+.bit.host{background:var(--host-soft);color:var(--host-text)}
+.bit.net.one{background:var(--net);color:#fff}
+.bit.host.one{background:var(--host);color:#fff}
+.bits-foot{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:8px;gap:12px;flex-wrap:wrap}
+.bits-foot .ln{color:var(--net-text)}
+.bits-foot .lh{color:var(--host-text)}
+@media (max-width:620px){.octets{grid-template-columns:repeat(2,1fr)}.bit{font-size:11px}}
+
+/* results */
+.results{margin-top:22px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.results h2{font-size:14px;font-weight:500;color:var(--muted);margin:0;padding:12px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.kv{display:grid;grid-template-columns:max-content 1fr auto;align-items:center}
+.kv > div{padding:9px 16px;border-bottom:1px solid var(--line);min-width:0}
+.kv > div:nth-last-child(-n+3){border-bottom:0}
+.kv .k{color:var(--muted);font-size:14px}
+.kv .v{font-family:var(--mono);font-size:14.5px;word-break:break-all}
+.kv .v .tag{display:inline-block;font-family:var(--sans);font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);margin-left:8px;color:var(--muted)}
+.kv .c{padding-left:8px;padding-right:12px}
+.copy{background:none;border:1px solid transparent;border-radius:6px;padding:3px 8px;color:var(--muted);cursor:pointer;font-size:12px}
+.copy:hover{background:var(--surface-2);border-color:var(--line)}
+.copy.done{color:var(--ok)}
+@media (max-width:620px){
+  .kv{grid-template-columns:1fr auto}
+  .kv .k{grid-column:1/-1;padding-bottom:0;border-bottom:0;font-size:12.5px}
+  .kv .v{border-bottom:1px solid var(--line)}
+  .kv > div:nth-last-child(-n+2){border-bottom:0}
+}
+
+table.list{width:100%;border-collapse:collapse;font-size:14px}
+table.list th,table.list td{text-align:left;padding:8px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.list th{color:var(--muted);font-weight:500;font-size:13px;background:var(--surface-2);position:sticky;top:0}
+table.list td{font-family:var(--mono)}
+table.list td.s{font-family:var(--sans)}
+table.list tr.cur td{background:var(--net-soft);color:var(--net-text)}
+table.list tr.cls td{background:var(--surface-2);color:var(--muted);font-family:var(--sans);font-size:13px}
+table.list tr.click{cursor:pointer}
+table.list tr.click:hover td{background:var(--surface-2)}
+table.list tr.cur.click:hover td{background:var(--net-soft)}
+.scroll{overflow-x:auto;max-height:560px;overflow-y:auto}
+.note{font-size:13px;color:var(--muted);padding:10px 16px;border-top:1px solid var(--line)}
+
+.two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media (max-width:760px){.two{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+.card h3{margin:0 0 12px;font-size:15px;font-weight:600}
+.card .out{margin-top:12px;font-family:var(--mono);font-size:14px;white-space:pre-wrap;word-break:break-all;background:var(--surface-2);border-radius:8px;padding:10px 12px;min-height:44px}
+.card .out .ok{color:var(--ok)}
+.card .out .no{color:var(--err)}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden}
+.seg button{background:var(--surface);border:0;padding:8px 12px;cursor:pointer;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--line-strong)}
+.seg button[aria-pressed="true"]{background:var(--net);color:#fff}
+.hint{font-size:13px;color:var(--muted);margin:6px 0 0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>IP 子網計算器<small>IPv4 / IPv6 / CIDR / VLSM</small></h1>
+  <div class="legend"><span class="ln">網路位元</span><span class="lh">主機位元</span></div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" data-tab="ipv4" aria-selected="true">IPv4</button>
+  <button role="tab" data-tab="ipv6" aria-selected="false">IPv6</button>
+  <button role="tab" data-tab="split" aria-selected="false">子網分割 / VLSM</button>
+  <button role="tab" data-tab="tools" aria-selected="false">轉換工具</button>
+  <button role="tab" data-tab="chart" aria-selected="false">CIDR 對照表</button>
+</nav>
+
+<!-- ============ IPv4 ============ -->
+<section class="panel active" id="tab-ipv4">
+  <div class="row">
+    <div class="field grow">
+      <label for="v4ip">IP 位址（可直接輸入 192.168.1.10/24 或 192.168.1.10 255.255.255.0）</label>
+      <input id="v4ip" value="192.168.1.10" spellcheck="false" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="v4class">網路類別</label>
+      <select id="v4class">
+        <option value="any">任意</option><option value="A">A 類</option><option value="B">B 類</option><option value="C">C 類</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="v4prefix">子網遮罩</label>
+      <select id="v4prefix" class="mono"></select>
+    </div>
+    <button class="btn primary" id="v4go">計算</button>
+  </div>
+  <div class="msg" id="v4msg"></div>
+
+  <div class="bits">
+    <div class="bits-head">
+      <div class="cidr" id="v4cidrBig">192.168.1.10<b>/24</b></div>
+      <input type="range" id="v4range" min="0" max="32" value="24" aria-label="前綴長度">
+    </div>
+    <div class="octets" id="v4octets"></div>
+    <div class="bits-foot"><span class="ln" id="v4netbits">網路位元：24</span><span>點一下任一位元即可設定網路／主機分界</span><span class="lh" id="v4hostbits">主機位元：8</span></div>
+  </div>
+
+  <div class="results">
+    <h2>計算結果 <button class="btn small" id="v4copyall">複製全部</button></h2>
+    <div class="kv" id="v4out"></div>
+  </div>
+
+  <div class="results">
+    <h2 id="v4allTitle">同一前綴下所有可能的子網</h2>
+    <div class="scroll"><table class="list" id="v4all"></table></div>
+    <div class="note" id="v4allNote"></div>
+  </div>
+</section>
+
+<!-- ============ IPv6 ============ -->
+<section class="panel" id="tab-ipv6">
+  <div class="row">
+    <div class="field grow">
+      <label for="v6ip">IPv6 位址（可含 /前綴，例如 2001:db8::1/64）</label>
+      <input id="v6ip" value="2001:db8:85a3::8a2e:370:7334" spellcheck="false" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="v6prefix">前綴長度</label>
+      <select id="v6prefix" class="mono"></select>
+    </div>
+    <button class="btn primary" id="v6go">計算</button>
+  </div>
+  <div class="msg" id="v6msg"></div>
+  <div class="results">
+    <h2>計算結果 <button class="btn small" id="v6copyall">複製全部</button></h2>
+    <div class="kv" id="v6out"></div>
+  </div>
+</section>
+
+<!-- ============ Split / VLSM ============ -->
+<section class="panel" id="tab-split">
+  <div class="two">
+    <div class="card">
+      <h3>等分子網</h3>
+      <div class="row">
+        <div class="field grow"><label for="spNet">網路（CIDR）</label><input id="spNet" value="10.0.0.0/24" spellcheck="false"></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div class="field"><label>分割方式</label>
+          <div class="seg" id="spMode"><button aria-pressed="true" data-m="count">依子網數量</button><button aria-pressed="false" data-m="hosts">依每子網主機數</button><button aria-pressed="false" data-m="prefix">依新前綴</button></div>
+        </div>
+        <div class="field"><label for="spVal" id="spValLabel">子網數量</label><input id="spVal" value="4" style="width:120px"></div>
+        <button class="btn primary" id="spGo">分割</button>
+      </div>
+      <p class="hint" id="spHint"></p>
+    </div>
+    <div class="card">
+      <h3>VLSM 規劃</h3>
+      <div class="field"><label for="vlNet">母網路（CIDR）</label><input id="vlNet" value="192.168.10.0/24" spellcheck="false"></div>
+      <div class="field" style="margin-top:10px"><label for="vlReq">需求清單（每行：名稱 主機數；大到小自動排序）</label>
+        <textarea id="vlReq">Sales 60
+Engineering 28
+Management 12
+WAN-link 2</textarea></div>
+      <div class="row" style="margin-top:10px"><button class="btn primary" id="vlGo">規劃</button></div>
+      <p class="hint" id="vlHint"></p>
+    </div>
+  </div>
+  <div class="results" id="spResWrap" style="display:none">
+    <h2 id="spResTitle">分割結果</h2>
+    <div class="scroll"><table class="list" id="spRes"></table></div>
+  </div>
+</section>
+
+<!-- ============ Tools ============ -->
+<section class="panel" id="tab-tools">
+  <div class="two">
+    <div class="card">
+      <h3>IPv4 表示法轉換</h3>
+      <div class="field"><label for="cvIp">輸入點分十進位、整數、十六進位（0x…）或 32 位元二進位</label><input id="cvIp" value="10.1.2.3" spellcheck="false"></div>
+      <div class="out" id="cvIpOut"></div>
+    </div>
+    <div class="card">
+      <h3>遮罩 ↔ CIDR ↔ 萬用遮罩</h3>
+      <div class="field"><label for="cvMask">輸入 /24、255.255.255.0 或 0.0.0.255</label><input id="cvMask" value="255.255.255.192" spellcheck="false"></div>
+      <div class="out" id="cvMaskOut"></div>
+    </div>
+    <div class="card">
+      <h3>IP 範圍 → CIDR 區塊</h3>
+      <div class="row">
+        <div class="field grow"><label for="rgA">起始</label><input id="rgA" value="192.168.0.10" spellcheck="false"></div>
+        <div class="field grow"><label for="rgB">結束</label><input id="rgB" value="192.168.1.200" spellcheck="false"></div>
+      </div>
+      <div class="out" id="rgOut"></div>
+    </div>
+    <div class="card">
+      <h3>IP 是否屬於子網</h3>
+      <div class="row">
+        <div class="field grow"><label for="inIp">IP 位址</label><input id="inIp" value="172.16.5.77" spellcheck="false"></div>
+        <div class="field grow"><label for="inNet">子網（CIDR，可多行以逗號分隔）</label><input id="inNet" value="172.16.0.0/12, 10.0.0.0/8" spellcheck="false"></div>
+      </div>
+      <div class="out" id="inOut"></div>
+    </div>
+    <div class="card">
+      <h3>兩個 IP 的最小共同網路（Supernet）</h3>
+      <div class="row">
+        <div class="field grow"><label for="suA">IP A</label><input id="suA" value="192.168.4.1" spellcheck="false"></div>
+        <div class="field grow"><label for="suB">IP B</label><input id="suB" value="192.168.7.254" spellcheck="false"></div>
+      </div>
+      <div class="out" id="suOut"></div>
+    </div>
+    <div class="card">
+      <h3>IPv6 壓縮 / 展開</h3>
+      <div class="field"><label for="cv6">輸入任意 IPv6 位址</label><input id="cv6" value="2001:0db8:0000:0000:0000:ff00:0042:8329" spellcheck="false"></div>
+      <div class="out" id="cv6Out"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Chart ============ -->
+<section class="panel" id="tab-chart">
+  <div class="results">
+    <h2>IPv4 CIDR 對照表（點選任一列可載入 IPv4 計算器）</h2>
+    <div class="scroll" style="max-height:none"><table class="list" id="chart"></table></div>
+    <div class="note">/31 依 RFC 3021 可用於點對點鏈路（2 台主機）；/32 為單一主機路由。「C 類數量」表示該前綴等於多少個 /24。</div>
+  </div>
+  <div class="results">
+    <h2>IPv6 常用前綴</h2>
+    <div class="scroll" style="max-height:none"><table class="list" id="chart6"></table></div>
+  </div>
+</section>
+</div>
+
+<script>
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const fmt=n=>(typeof n==='bigint'?n:Number(n)).toLocaleString('en-US');
+const pad=(s,n,c='0')=>s.toString().padStart(n,c);
+function copyText(t,btn){
+  const done=()=>{if(btn){btn.classList.add('done');const o=btn.textContent;btn.textContent='已複製';setTimeout(()=>{btn.classList.remove('done');btn.textContent=o;},1200);}};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done).catch(()=>fallback());}else fallback();
+  function fallback(){const ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done();}catch(e){}document.body.removeChild(ta);}
+}
+function renderKV(el,rows){
+  el.innerHTML='';
+  rows.forEach(([k,v,tag])=>{
+    const dk=document.createElement('div');dk.className='k';dk.textContent=k;
+    const dv=document.createElement('div');dv.className='v';dv.textContent=v;
+    if(tag){const t=document.createElement('span');t.className='tag';t.textContent=tag;dv.appendChild(t);}
+    const dc=document.createElement('div');dc.className='c';
+    const b=document.createElement('button');b.className='copy';b.textContent='複製';b.addEventListener('click',()=>copyText(v,b));dc.appendChild(b);
+    el.append(dk,dv,dc);
+  });
+  return rows.map(([k,v])=>k+': '+v).join('\n');
+}
+
+/* ---------- IPv4 core ---------- */
+function parseV4(s){
+  s=(s||'').trim();
+  const m=s.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if(!m)return null;
+  const o=m.slice(1).map(Number);
+  if(o.some(x=>x>255))return null;
+  return ((o[0]<<24)|(o[1]<<16)|(o[2]<<8)|o[3])>>>0;
+}
+const v4str=n=>[n>>>24,(n>>>16)&255,(n>>>8)&255,n&255].join('.');
+const maskOf=p=>p===0?0:((0xFFFFFFFF<<(32-p))>>>0);
+function prefixOfMask(m){ // contiguous check
+  const inv=(~m)>>>0; if(((inv+1)&inv)!==0)return null;
+  let p=0;while(p<32&&(m&(0x80000000>>>p)))p++;return p;
+}
+const bin32=n=>pad(n.toString(2),32);
+const binDots=n=>bin32(n).match(/.{8}/g).join('.');
+const hex32=n=>'0x'+pad(n.toString(16).toUpperCase(),8);
+function v4class(n){const a=n>>>24;if(a<128)return 'A';if(a<192)return 'B';if(a<224)return 'C';if(a<240)return 'D（多播）';return 'E（保留）';}
+const classPrefix={A:8,B:16,C:24};
+function inCidr(n,net,p){return ((n&maskOf(p))>>>0)===((net&maskOf(p))>>>0);}
+const specialV4=[
+  ['0.0.0.0',8,'本網路 (RFC 1122)','special'],
+  ['10.0.0.0',8,'私有位址 (RFC 1918)','private'],
+  ['100.64.0.0',10,'共用位址空間 / CGNAT (RFC 6598)','special'],
+  ['127.0.0.0',8,'迴路位址 Loopback (RFC 1122)','special'],
+  ['169.254.0.0',16,'鏈路本地 Link-local / APIPA (RFC 3927)','special'],
+  ['172.16.0.0',12,'私有位址 (RFC 1918)','private'],
+  ['192.0.0.0',24,'IETF 協定指派 (RFC 6890)','special'],
+  ['192.0.2.0',24,'文件範例 TEST-NET-1 (RFC 5737)','special'],
+  ['192.88.99.0',24,'6to4 中繼（已棄用）(RFC 7526)','special'],
+  ['192.168.0.0',16,'私有位址 (RFC 1918)','private'],
+  ['198.18.0.0',15,'網路效能測試 (RFC 2544)','special'],
+  ['198.51.100.0',24,'文件範例 TEST-NET-2 (RFC 5737)','special'],
+  ['203.0.113.0',24,'文件範例 TEST-NET-3 (RFC 5737)','special'],
+  ['224.0.0.0',4,'多播 Multicast (RFC 5771)','special'],
+  ['240.0.0.0',4,'保留 Reserved (RFC 1112)','special'],
+  ['255.255.255.255',32,'受限廣播 Limited broadcast','special'],
+];
+function v4type(n){
+  for(const [a,p,label,kind] of specialV4){if(inCidr(n,parseV4(a),p))return {label,kind};}
+  return {label:'公開位址 Public',kind:'public'};
+}
+function calcV4(ip,p){
+  const mask=maskOf(p),wild=(~mask)>>>0;
+  const net=(ip&mask)>>>0,bc=(net|wild)>>>0;
+  const total=2**(32-p);
+  let usable,first,last;
+  if(p===32){usable=1;first=net;last=net;}
+  else if(p===31){usable=2;first=net;last=bc;}
+  else{usable=total-2;first=net+1;last=bc-1;}
+  return {ip,p,mask,wild,net,bc,total,usable,first,last};
+}
+
+/* ---------- IPv6 core ---------- */
+const MAX128=(1n<<128n)-1n;
+function parseV6(s){
+  s=(s||'').trim().replace(/%.*$/,'');
+  if(s.startsWith('[')&&s.endsWith(']'))s=s.slice(1,-1);
+  if(!s||/[^0-9a-fA-F:.]/.test(s))return null;
+  // embedded IPv4
+  let tail=[];
+  const lastColon=s.lastIndexOf(':');
+  if(s.includes('.')){
+    const v4=parseV4(s.slice(lastColon+1));if(v4===null)return null;
+    tail=[v4>>>16,v4&0xffff];s=s.slice(0,lastColon+1)+'0:0';
+  }
+  const parts=s.split('::');
+  if(parts.length>2)return null;
+  const toGroups=str=>str===''?[]:str.split(':').map(g=>{if(!/^[0-9a-fA-F]{1,4}$/.test(g))throw 0;return parseInt(g,16);});
+  let groups;
+  try{
+    if(parts.length===2){
+      const a=toGroups(parts[0]),b=toGroups(parts[1]);
+      if(a.length+b.length>7)return null;
+      groups=[...a,...Array(8-a.length-b.length).fill(0),...b];
+    }else{groups=toGroups(parts[0]);if(groups.length!==8)return null;}
+  }catch(e){return null;}
+  if(tail.length){groups[6]=tail[0];groups[7]=tail[1];}
+  let n=0n;for(const g of groups)n=(n<<16n)|BigInt(g);
+  return n;
+}
+function v6groups(n){const g=[];for(let i=7;i>=0;i--)g.push(Number((n>>BigInt(i*16))&0xffffn));return g;}
+const v6full=n=>v6groups(n).map(g=>pad(g.toString(16),4)).join(':');
+function v6compress(n){
+  const g=v6groups(n);let best=-1,bestLen=0,cur=-1,len=0;
+  for(let i=0;i<=8;i++){
+    if(i<8&&g[i]===0){if(cur<0){cur=i;len=1;}else len++;}
+    else{if(len>bestLen&&len>=2){best=cur;bestLen=len;}cur=-1;len=0;}
+  }
+  const h=g.map(x=>x.toString(16));
+  if(best<0)return h.join(':');
+  const a=h.slice(0,best).join(':'),b=h.slice(best+bestLen).join(':');
+  return a+'::'+b;
+}
+const v6mask=p=>p===0?0n:(MAX128<<BigInt(128-p))&MAX128;
+function v6arpa(n){return pad(n.toString(16),32).split('').reverse().join('.')+'.ip6.arpa';}
+function v6type(n){
+  const top=(n>>112n);
+  if(n===0n)return '未指定位址 ::';
+  if(n===1n)return '迴路位址 ::1';
+  if((n>>32n)===0xffffn)return 'IPv4 對應位址 ::ffff:0:0/96';
+  if((n>>96n)===0x64ff9bn)return 'NAT64 / IPv4-IPv6 轉換 64:ff9b::/96';
+  if(top===0x2001n&&((n>>96n)&0xffffn)===0xdb8n)return '文件範例 2001:db8::/32 (RFC 3849)';
+  if(top===0x2001n&&((n>>96n)&0xffffn)===0n)return 'Teredo 2001::/32';
+  if(top===0x2002n)return '6to4 2002::/16';
+  if((top>>8n)===0xfcn||(top>>8n)===0xfdn)return '唯一本地位址 ULA fc00::/7 (RFC 4193)';
+  if((top>>6n)===0x3fan)return '鏈路本地 Link-local fe80::/10';
+  if((top>>8n)===0xffn)return '多播 Multicast ff00::/8';
+  if((top>>13n)===1n)return '全域單播 Global unicast 2000::/3';
+  return '保留 / 未配置';
+}
+
+/* ---------- Tabs ---------- */
+const tabs=[...document.querySelectorAll('nav.tabs button')];
+const reserved=['settings','sidebar','customize','upgrade','downloads'];
+function showTab(name,push){
+  if(!tabs.some(b=>b.dataset.tab===name))name='ipv4';
+  tabs.forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===name));
+  document.querySelectorAll('section.panel').forEach(s=>s.classList.toggle('active',s.id==='tab-'+name));
+  if(push&&location.hash!=='#'+name){try{location.hash=name;}catch(e){}}
+}
+tabs.forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab,true)));
+window.addEventListener('hashchange',()=>showTab(location.hash.replace('#',''),false));
+
+/* ---------- IPv4 UI ---------- */
+const v4ip=$('#v4ip'),v4prefix=$('#v4prefix'),v4class_=$('#v4class'),v4range=$('#v4range'),v4msg=$('#v4msg');
+let v4state={ip:parseV4('192.168.1.10'),p:24},v4text='';
+function fillPrefixOptions(){
+  const cls=v4class_.value;const lo=cls==='any'?0:classPrefix[cls];
+  const cur=v4state.p;v4prefix.innerHTML='';
+  for(let p=lo;p<=32;p++){const o=document.createElement('option');o.value=p;o.textContent='/'+p+'  '+v4str(maskOf(p));v4prefix.appendChild(o);}
+  v4prefix.value=Math.max(cur,lo);
+}
+function parseV4Input(){
+  let s=v4ip.value.trim().replace(/\s+/g,' ');let p=null,ipStr=s;
+  let m=s.match(/^(\S+)\/(\d{1,2})$/);
+  if(m){ipStr=m[1];p=+m[2];if(p>32)return {err:'前綴長度須在 0–32 之間'};}
+  else{m=s.match(/^(\S+) (\S+)$/);if(m){ipStr=m[1];const mk=parseV4(m[2]);if(mk===null)return {err:'子網遮罩格式錯誤'};p=prefixOfMask(mk);if(p===null)return {err:'子網遮罩不連續，不是有效遮罩'};}}
+  const ip=parseV4(ipStr);if(ip===null)return {err:'IP 位址格式錯誤，請輸入 0–255 的四段數字'};
+  return {ip,p};
+}
+function setPrefix(p,src){
+  p=Math.max(0,Math.min(32,p));v4state.p=p;
+  const cls=v4class_.value;if(cls!=='any'&&p<classPrefix[cls]){v4class_.value='any';fillPrefixOptions();}
+  if(src!=='select')v4prefix.value=p;if(src!=='range')v4range.value=p;
+  const m=v4ip.value.trim().match(/^(\S+)(\/\d+| \S+)$/);
+  if(m)v4ip.value=m[1]+'/'+p;
+  renderV4();
+}
+function runV4(){
+  const r=parseV4Input();
+  if(r.err){v4msg.textContent=r.err;v4ip.classList.add('bad');return;}
+  v4ip.classList.remove('bad');v4msg.textContent='';
+  v4state.ip=r.ip;
+  if(r.p!==null){v4state.p=r.p;v4prefix.value=r.p;v4range.value=r.p;}
+  else{v4state.p=+v4prefix.value;}
+  const cls=v4class_.value;if(cls!=='any'&&v4state.p<classPrefix[cls]){v4class_.value='any';fillPrefixOptions();v4prefix.value=v4state.p;}
+  renderV4();
+}
+function renderV4(){
+  const {ip,p}=v4state;const r=calcV4(ip,p);
+  $('#v4cidrBig').innerHTML=v4str(ip)+'<b>/'+p+'</b>';
+  $('#v4netbits').textContent='網路位元：'+p;$('#v4hostbits').textContent='主機位元：'+(32-p);
+  // bit strip
+  const bits=bin32(ip);const oc=$('#v4octets');oc.innerHTML='';
+  for(let o=0;o<4;o++){
+    const d=document.createElement('div');d.className='octet';
+    const dec=document.createElement('div');dec.className='dec';dec.textContent=(ip>>>(24-o*8))&255;d.appendChild(dec);
+    for(let b=0;b<8;b++){
+      const i=o*8+b;const c=document.createElement('div');
+      c.className='bit '+(i<p?'net':'host')+(bits[i]==='1'?' one':'');c.textContent=bits[i];
+      c.title=(i<p?'網路位元':'主機位元')+' #'+(i+1)+'（權重 2^'+(7-b)+'）';
+      c.addEventListener('click',()=>setPrefix(i<p?i:i+1));d.appendChild(c);
+    }
+    oc.appendChild(d);
+  }
+  // results
+  const t=v4type(ip),cls=v4class(ip);
+  const rows=[
+    ['IP 位址',v4str(ip)],
+    ['網路位址',v4str(r.net)+'/'+p],
+    ['可用主機範圍',p>=31?v4str(r.first)+' – '+v4str(r.last):v4str(r.first)+' – '+v4str(r.last)],
+    ['廣播位址',p>=31?'無（/'+p+' 無廣播位址）':v4str(r.bc)],
+    ['主機總數',fmt(r.total)],
+    ['可用主機數',fmt(r.usable), p===31?'RFC 3021 點對點':p===32?'單一主機':''],
+    ['子網遮罩',v4str(r.mask)],
+    ['萬用遮罩 (Wildcard)',v4str(r.wild)],
+    ['二進位子網遮罩',binDots(r.mask)],
+    ['IP 類別',cls, (classPrefix[cls]&&p>=classPrefix[cls])?'預設 /'+classPrefix[cls]:''],
+    ['CIDR 表示法','/'+p],
+    ['IP 類型',t.label],
+    ['簡寫',v4str(ip)+' /'+p],
+    ['二進位 ID',bin32(ip)],
+    ['整數 ID',String(ip)],
+    ['十六進位 ID',hex32(ip)],
+    ['反向 DNS (in-addr.arpa)',v4str(ip).split('.').reverse().join('.')+'.in-addr.arpa'],
+    ['IPv4 對應的 IPv6 位址','::ffff:'+v4str(ip)+'  (::ffff:'+pad((ip>>>16).toString(16),4)+':'+pad((ip&0xffff).toString(16),4)+')'],
+    ['6to4 前綴','2002:'+pad((ip>>>16).toString(16),4)+':'+pad((ip&0xffff).toString(16),4)+'::/48'],
+  ];
+  if(classPrefix[cls]&&p>=classPrefix[cls]){
+    const sb=p-classPrefix[cls];
+    rows.push(['子網位元（相對於 '+cls+' 類）',String(sb)]);
+    rows.push(['可切出的子網數（相對於 '+cls+' 類）',fmt(2**sb)]);
+    rows.push(['每子網主機數（可用）',fmt(r.usable)]);
+  }
+  v4text=renderKV($('#v4out'),rows);
+  renderV4All();
+  try{localStorage.setItem('subnetcalc.v4',JSON.stringify({ip:v4str(ip),p}));}catch(e){}
+}
+function renderV4All(){
+  const {ip,p}=v4state;const tbl=$('#v4all'),note=$('#v4allNote');
+  if(p===0){tbl.innerHTML='';$('#v4allTitle').textContent='同一前綴下所有可能的子網';note.textContent='/0 涵蓋整個 IPv4 位址空間，沒有同層子網。';return;}
+  const pp=p>8?Math.floor((p-1)/8)*8:0;const parent=(ip&maskOf(pp))>>>0;
+  const count=2**(p-pp),size=2**(32-p),limit=256;
+  $('#v4allTitle').textContent='所有 /'+p+' 子網（位於 '+v4str(parent)+'/'+pp+' 內，共 '+fmt(count)+' 個）';
+  const cur=(ip&maskOf(p))>>>0;
+  let start=0;
+  if(count>limit){const idx=Math.floor((cur-parent)/size);start=Math.max(0,Math.min(count-limit,idx-Math.floor(limit/2)));}
+  let html='<thead><tr><th>#</th><th>網路位址</th><th>可用主機範圍</th><th>廣播位址</th></tr></thead><tbody>';
+  for(let i=start;i<Math.min(count,start+limit);i++){
+    const n=(parent+i*size)>>>0;const r=calcV4(n,p);
+    html+='<tr class="click'+(n===cur?' cur':'')+'" data-n="'+n+'"><td class="s">'+(i+1)+'</td><td>'+v4str(n)+'</td><td>'+v4str(r.first)+' – '+v4str(r.last)+'</td><td>'+(p>=31?'—':v4str(r.bc))+'</td></tr>';
+  }
+  tbl.innerHTML=html+'</tbody>';
+  note.textContent=count>limit?'數量過多，僅顯示目前子網附近的 '+limit+' 個（第 '+(start+1)+' – '+Math.min(count,start+limit)+' 個）。':'點選任一列可將該網路載入計算器。';
+  tbl.querySelectorAll('tr.click').forEach(tr=>tr.addEventListener('click',()=>{v4ip.value=v4str(+tr.dataset.n)+'/'+p;runV4();}));
+}
+v4class_.addEventListener('change',()=>{
+  const cls=v4class_.value;
+  if(cls!=='any'){const a=v4state.ip>>>24;const ok=cls==='A'?a<128:cls==='B'?(a>=128&&a<192):(a>=192&&a<224);
+    if(!ok){const def={A:'10.0.0.1',B:'172.16.0.1',C:'192.168.1.1'}[cls];v4ip.value=def+'/'+Math.max(v4state.p,classPrefix[cls]);}
+    else{v4ip.value=v4str(v4state.ip)+'/'+Math.max(v4state.p,classPrefix[cls]);}
+  }
+  fillPrefixOptions();runV4();
+});
+v4prefix.addEventListener('change',()=>setPrefix(+v4prefix.value,'select'));
+v4range.addEventListener('input',()=>setPrefix(+v4range.value,'range'));
+$('#v4go').addEventListener('click',runV4);
+v4ip.addEventListener('keydown',e=>{if(e.key==='Enter')runV4();});
+v4ip.addEventListener('input',()=>{const r=parseV4Input();if(!r.err){v4ip.classList.remove('bad');v4msg.textContent='';}});
+$('#v4copyall').addEventListener('click',e=>copyText(v4text,e.target));
+
+/* ---------- IPv6 UI ---------- */
+const v6ip=$('#v6ip'),v6prefix=$('#v6prefix'),v6msg=$('#v6msg');let v6text='';
+(function(){for(let p=1;p<=128;p++){const o=document.createElement('option');o.value=p;o.textContent='/'+p;v6prefix.appendChild(o);}v6prefix.value=64;})();
+function runV6(){
+  let s=v6ip.value.trim();let p=null;
+  const m=s.match(/^(.+)\/(\d{1,3})$/);
+  if(m){s=m[1];p=+m[2];if(p<1||p>128){v6msg.textContent='前綴長度須在 1–128 之間';v6ip.classList.add('bad');return;}v6prefix.value=p;}
+  else p=+v6prefix.value;
+  const n=parseV6(s);
+  if(n===null){v6msg.textContent='IPv6 位址格式錯誤';v6ip.classList.add('bad');return;}
+  v6ip.classList.remove('bad');v6msg.textContent='';
+  const mask=v6mask(p),net=n&mask,last=net|(MAX128^mask);
+  const total=1n<<BigInt(128-p);
+  const rows=[
+    ['IP 位址（壓縮）',v6compress(n)],
+    ['IP 位址（完整）',v6full(n)],
+    ['前綴長度','/'+p],
+    ['網路位址',v6compress(net)+'/'+p],
+    ['網路位址（完整）',v6full(net)+'/'+p],
+    ['首個位址',v6compress(net)],
+    ['末個位址',v6compress(last)],
+    ['位址範圍（完整）',v6full(net)+' – '+v6full(last)],
+    ['位址總數',fmt(total)+(p<=64?'（'+fmt(1n<<BigInt(64-p))+' 個 /64）':'')],
+    ['位址類型',v6type(n)],
+    ['十六進位 ID','0x'+pad(n.toString(16),32)],
+    ['整數 ID',n.toString()],
+    ['反向 DNS (ip6.arpa)',v6arpa(n)],
+    ['前綴反向 DNS',p%4===0?pad(net.toString(16),32).slice(0,p/4).split('').reverse().join('.')+'.ip6.arpa':'（前綴非 4 的倍數，無整齊的委派邊界）'],
+  ];
+  if((n>>32n)===0xffffn)rows.push(['內嵌的 IPv4',v4str(Number(n&0xffffffffn))]);
+  v6text=renderKV($('#v6out'),rows);
+  try{localStorage.setItem('subnetcalc.v6',JSON.stringify({s:v6compress(n),p}));}catch(e){}
+}
+$('#v6go').addEventListener('click',runV6);v6prefix.addEventListener('change',()=>{v6ip.value=v6ip.value.replace(/\/\d+$/,'');runV6();});
+v6ip.addEventListener('keydown',e=>{if(e.key==='Enter')runV6();});
+$('#v6copyall').addEventListener('click',e=>copyText(v6text,e.target));
+
+/* ---------- Split / VLSM ---------- */
+function parseCidr(s){const m=(s||'').trim().match(/^(\S+)\/(\d{1,2})$/);if(!m)return null;const ip=parseV4(m[1]),p=+m[2];if(ip===null||p>32)return null;return {net:(ip&maskOf(p))>>>0,p,raw:ip};}
+let spMode='count';
+$('#spMode').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+  spMode=b.dataset.m;$('#spMode').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+  $('#spValLabel').textContent={count:'子網數量',hosts:'每子網所需主機數',prefix:'新前綴長度'}[spMode];
+  $('#spVal').value={count:'4',hosts:'50',prefix:'26'}[spMode];
+}));
+function showSplit(title,rowsHtml){$('#spResWrap').style.display='';$('#spResTitle').textContent=title;$('#spRes').innerHTML=rowsHtml;}
+function subnetRows(list,p0){
+  let h='<thead><tr><th>#</th><th>名稱</th><th>子網</th><th>遮罩</th><th>可用主機範圍</th><th>廣播</th><th>可用主機</th></tr></thead><tbody>';
+  list.forEach((x,i)=>{const r=calcV4(x.net,x.p);
+    h+='<tr><td class="s">'+(i+1)+'</td><td class="s">'+(x.name||'—')+'</td><td>'+v4str(x.net)+'/'+x.p+'</td><td>'+v4str(r.mask)+'</td><td>'+v4str(r.first)+' – '+v4str(r.last)+'</td><td>'+(x.p>=31?'—':v4str(r.bc))+'</td><td>'+fmt(r.usable)+(x.need?' <span class="s" style="color:var(--muted)">（需 '+x.need+'）</span>':'')+'</td></tr>';});
+  return h+'</tbody>';
+}
+$('#spGo').addEventListener('click',()=>{
+  const c=parseCidr($('#spNet').value),hint=$('#spHint');const v=+$('#spVal').value;
+  if(!c){hint.textContent='網路格式錯誤，請輸入如 10.0.0.0/24';return;}
+  let np;
+  if(spMode==='count'){if(!(v>=1))return hint.textContent='子網數量須為正整數';np=c.p+Math.ceil(Math.log2(v));}
+  else if(spMode==='hosts'){if(!(v>=1))return hint.textContent='主機數須為正整數';const need=v<=2?(v===1?32:31):32-Math.ceil(Math.log2(v+2));np=need;}
+  else{np=v;}
+  if(!(np>=c.p&&np<=32))return hint.textContent='無法分割：新前綴 /'+np+' 超出範圍（須介於 /'+c.p+' 與 /32）';
+  const count=2**(np-c.p),size=2**(32-np),limit=1024;
+  const list=[];for(let i=0;i<Math.min(count,limit);i++)list.push({net:(c.net+i*size)>>>0,p:np});
+  hint.textContent=v4str(c.net)+'/'+c.p+' → '+fmt(count)+' 個 /'+np+'，每個 '+fmt(calcV4(c.net,np).usable)+' 台可用主機'+(count>limit?'（僅列出前 '+limit+' 個）':'');
+  showSplit('等分結果：'+v4str(c.net)+'/'+c.p+' 分成 '+fmt(count)+' 個 /'+np,subnetRows(list));
+});
+$('#vlGo').addEventListener('click',()=>{
+  const c=parseCidr($('#vlNet').value),hint=$('#vlHint');
+  if(!c)return hint.textContent='母網路格式錯誤，請輸入如 192.168.10.0/24';
+  const reqs=[];
+  for(const line of $('#vlReq').value.split('\n')){const t=line.trim();if(!t)continue;const m=t.match(/^(.*?)[\s,;:]*(\d+)\s*$/);if(!m)return hint.textContent='無法解析：「'+t+'」（格式：名稱 主機數）';reqs.push({name:m[1].trim()||('子網'+(reqs.length+1)),need:+m[2]});}
+  if(!reqs.length)return hint.textContent='請至少輸入一項需求';
+  reqs.sort((a,b)=>b.need-a.need);
+  const end=(c.net|((~maskOf(c.p))>>>0))>>>0;let cursor=c.net;const out=[];
+  for(const r of reqs){
+    const p=r.need<=1?32:r.need===2?31:32-Math.ceil(Math.log2(r.need+2));
+    const size=2**(32-p);
+    const aligned=Math.ceil(cursor/size)*size;
+    if(aligned+size-1>end||p<c.p){return hint.textContent='空間不足：「'+r.name+'」需要 /'+p+'（'+fmt(size)+' 個位址），母網路已無法容納。';}
+    out.push({name:r.name,need:r.need,net:aligned>>>0,p});cursor=aligned+size;
+  }
+  const used=cursor-c.net,totalSpace=2**(32-c.p);
+  hint.textContent='已配置 '+fmt(used)+' / '+fmt(totalSpace)+' 個位址（'+(100*used/totalSpace).toFixed(1)+'%），剩餘 '+fmt(totalSpace-used)+'；下一個可用起點 '+(cursor<=end?v4str(cursor>>>0):'無');
+  showSplit('VLSM 結果：'+v4str(c.net)+'/'+c.p,subnetRows(out));
+});
+
+/* ---------- Tools ---------- */
+function bindLive(ids,fn){ids.forEach(id=>$(id).addEventListener('input',fn));fn();}
+bindLive(['#cvIp'],()=>{
+  let s=$('#cvIp').value.trim(),n=null;
+  if(/^\d{1,3}(\.\d{1,3}){3}$/.test(s))n=parseV4(s);
+  else if(/^0x[0-9a-f]{1,8}$/i.test(s))n=parseInt(s,16);
+  else if(/^[01]{32}$/.test(s))n=parseInt(s,2);
+  else if(/^[01]{8}(\.[01]{8}){3}$/.test(s))n=parseInt(s.replace(/\./g,''),2);
+  else if(/^\d+$/.test(s)&&+s<=4294967295)n=+s;
+  const o=$('#cvIpOut');if(n===null||isNaN(n))return o.textContent='無法辨識的格式';
+  n=n>>>0;
+  o.textContent='點分十進位  '+v4str(n)+'\n整數        '+n+'\n十六進位    '+hex32(n)+'\n二進位      '+binDots(n)+'\n八進位      '+[n>>>24,(n>>>16)&255,(n>>>8)&255,n&255].map(x=>'0'+x.toString(8)).join('.')+'\n點分十六進位 '+[n>>>24,(n>>>16)&255,(n>>>8)&255,n&255].map(x=>'0x'+pad(x.toString(16).toUpperCase(),2)).join('.')+'\n類別 / 類型  '+v4class(n)+' / '+v4type(n).label;
+});
+bindLive(['#cvMask'],()=>{
+  let s=$('#cvMask').value.trim(),p=null;const o=$('#cvMaskOut');
+  let m=s.match(/^\/?(\d{1,2})$/);
+  if(m){p=+m[1];if(p>32)p=null;}
+  else{const n=parseV4(s);if(n!==null){p=prefixOfMask(n);if(p===null){const q=prefixOfMask((~n)>>>0);if(q!==null)p=q;}}}
+  if(p===null)return o.textContent='不是有效的 CIDR、子網遮罩或萬用遮罩';
+  const mk=maskOf(p),r=calcV4(0,p);
+  o.textContent='CIDR        /'+p+'\n子網遮罩    '+v4str(mk)+'\n萬用遮罩    '+v4str((~mk)>>>0)+'\n二進位      '+binDots(mk)+'\n十六進位    '+hex32(mk)+'\n位址總數    '+fmt(r.total)+'\n可用主機    '+fmt(r.usable);
+});
+bindLive(['#rgA','#rgB'],()=>{
+  let a=parseV4($('#rgA').value),b=parseV4($('#rgB').value);const o=$('#rgOut');
+  if(a===null||b===null)return o.textContent='請輸入有效的起始與結束 IP';
+  if(a>b)[a,b]=[b,a];
+  const blocks=[];let cur=a;let guard=0;
+  while(cur<=b&&guard++<4096){
+    let p=32;
+    while(p>0){const size=2**(32-(p-1));if(cur%size!==0||cur+size-1>b)break;p--;}
+    blocks.push(v4str(cur)+'/'+p);cur+=2**(32-p);if(cur>0xFFFFFFFF)break;
+  }
+  o.textContent='共 '+fmt(b-a+1)+' 個位址，'+blocks.length+' 個 CIDR 區塊：\n'+blocks.join('\n');
+});
+bindLive(['#inIp','#inNet'],()=>{
+  const ip=parseV4($('#inIp').value);const o=$('#inOut');
+  if(ip===null)return o.textContent='請輸入有效的 IP 位址';
+  const nets=$('#inNet').value.split(/[,\s]+/).filter(Boolean);if(!nets.length)return o.textContent='請輸入至少一個子網';
+  o.innerHTML=nets.map(s=>{const c=parseCidr(s);if(!c)return '<span class="no">✗</span> '+s+'：格式錯誤';const ok=inCidr(ip,c.net,c.p);return (ok?'<span class="ok">✓</span> ':'<span class="no">✗</span> ')+v4str(c.net)+'/'+c.p+'  '+(ok?'包含':'不包含')+' '+v4str(ip);}).join('\n');
+});
+bindLive(['#suA','#suB'],()=>{
+  const a=parseV4($('#suA').value),b=parseV4($('#suB').value);const o=$('#suOut');
+  if(a===null||b===null)return o.textContent='請輸入兩個有效的 IP 位址';
+  let p=32;while(p>0&&((a&maskOf(p))>>>0)!==((b&maskOf(p))>>>0))p--;
+  const r=calcV4(a,p);
+  o.textContent='最小共同網路  '+v4str(r.net)+'/'+p+'\n子網遮罩      '+v4str(r.mask)+'\n範圍          '+v4str(r.net)+' – '+v4str(r.bc)+'\n可用主機      '+fmt(r.usable);
+});
+bindLive(['#cv6'],()=>{
+  const n=parseV6($('#cv6').value.replace(/\/\d+$/,''));const o=$('#cv6Out');
+  if(n===null)return o.textContent='IPv6 位址格式錯誤';
+  o.textContent='壓縮        '+v6compress(n)+'\n完整        '+v6full(n)+'\n類型        '+v6type(n)+'\n十六進位    0x'+pad(n.toString(16),32)+'\n整數        '+n.toString()+'\nip6.arpa    '+v6arpa(n);
+});
+
+/* ---------- Chart ---------- */
+(function(){
+  let h='<thead><tr><th>CIDR</th><th>子網遮罩</th><th>萬用遮罩</th><th>位址總數</th><th>可用主機</th><th>C 類數量</th><th>主機位元</th></tr></thead><tbody>';
+  for(let p=0;p<=32;p++){
+    if(p===8)h+='<tr class="cls"><td colspan="7">A 類預設邊界</td></tr>';
+    if(p===16)h+='<tr class="cls"><td colspan="7">B 類預設邊界</td></tr>';
+    if(p===24)h+='<tr class="cls"><td colspan="7">C 類預設邊界</td></tr>';
+    const r=calcV4(0,p);const mk=maskOf(p);const c=p<=24?fmt(2**(24-p)):'1/'+(2**(p-24));
+    h+='<tr class="click" data-p="'+p+'"><td>/'+p+'</td><td>'+v4str(mk)+'</td><td>'+v4str((~mk)>>>0)+'</td><td>'+fmt(r.total)+'</td><td>'+fmt(r.usable)+'</td><td>'+c+'</td><td>'+(32-p)+'</td></tr>';
+  }
+  $('#chart').innerHTML=h+'</tbody>';
+  $('#chart').querySelectorAll('tr.click').forEach(tr=>tr.addEventListener('click',()=>{v4class_.value='any';fillPrefixOptions();v4ip.value=v4str(v4state.ip)+'/'+tr.dataset.p;runV4();showTab('ipv4',true);window.scrollTo({top:0});}));
+  const six=[['/32','RIR 配給 ISP／大型組織的典型起始大小','65,536 個 /48'],['/48','分配給單一站點／組織的典型大小','65,536 個 /64'],['/56','ISP 配給家用用戶的常見大小','256 個 /64'],['/60','部分 ISP 配給家用用戶','16 個 /64'],['/64','單一 LAN 區段（SLAAC 要求）','2^64 個位址'],['/96','IPv4 對應／NAT64 前綴','2^32 個位址'],['/127','點對點鏈路 (RFC 6164)','2 個位址'],['/128','單一主機','1 個位址']];
+  $('#chart6').innerHTML='<thead><tr><th>前綴</th><th>用途</th><th>容量</th></tr></thead><tbody>'+six.map(x=>'<tr><td>'+x[0]+'</td><td class="s">'+x[1]+'</td><td>'+x[2]+'</td></tr>').join('')+'</tbody>';
+})();
+
+/* ---------- init ---------- */
+(function(){
+  try{const s=JSON.parse(localStorage.getItem('subnetcalc.v4')||'null');if(s&&parseV4(s.ip)!==null&&s.p>=0&&s.p<=32){v4ip.value=s.ip+'/'+s.p;}}catch(e){}
+  try{const s=JSON.parse(localStorage.getItem('subnetcalc.v6')||'null');if(s&&parseV6(s.s)!==null){v6ip.value=s.s;v6prefix.value=s.p;}}catch(e){}
+  fillPrefixOptions();runV4();runV6();
+  showTab((location.hash||'#ipv4').replace('#',''),false);
+})();
+</script>
+</body>
+</html>
